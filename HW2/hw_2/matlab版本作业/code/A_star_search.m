@@ -96,7 +96,6 @@ while(flag)
     parents_node = OPEN(min_idx, 2:3);
     % Find the child nodes
     child_nodes = expand_array(parents_node(1), parents_node(2), gn, xTarget, yTarget, CLOSED, MAX_X, MAX_Y);
-    
     % Check if those child_nodes are in the open list; if not, add them to it
     for i = 1:size(child_nodes,1)
         child_node = child_nodes(i,:);
@@ -109,8 +108,9 @@ while(flag)
                 OPEN(openlist_idx, 8) = child_node(:, 5);
             end
         else% If not in the open list and closed list, add to the open list
-            OPEN_COUNT = OPEN_COUNT + 1;
-            OPEN(OPEN_COUNT,:) = insert_open(child_node(1), child_node(2), parents_node(1), parents_node(2), child_node(3), child_node(4), child_node(5));
+            % OPEN_COUNT = OPEN_COUNT + 1;
+            new_row = insert_open(child_node(1), child_node(2), parents_node(1), parents_node(2), child_node(3), child_node(4), child_node(5));
+            OPEN(end+1,:) = new_row;
         end
     end
     
@@ -118,6 +118,7 @@ while(flag)
     CLOSED_COUNT = CLOSED_COUNT + 1;
     CLOSED(CLOSED_COUNT, 1:2) = OPEN(min_idx, 2:3);
     path = [path;OPEN(min_idx, 2:3)];
+
     % Check if the target node has been reached
     if isequal(parents_node, target_node)
         CLOSED_COUNT = CLOSED_COUNT + 1;
@@ -127,6 +128,5 @@ while(flag)
         OPEN(min_idx, :) = [];
     end
 end
-path(any(path,2)==0,:)=[];
 
 
