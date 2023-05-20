@@ -1,0 +1,113 @@
+function [path] = RRTstar(start, goal, obstacles, mapSize, maxIterations, stepSize, goalBias, radius)
+
+    nodes(1).pos = start;
+    nodes(1).cost = 0;
+    nodes(1).parent = 0;
+
+    for i = 2:maxIterations
+        if rand() < goalBias
+            sample = goal;
+        else
+            sample = [rand()*mapSize(1), rand()*mapSize(2)];
+        end
+
+        [nearestNodeIndex, nearestNode] = findNearestNode(nodes, sample);
+
+        newNode = steer(nearestNode.pos, sample, stepSize);
+
+        if ~isCollision(nearestNode.pos, newNode, obstacles) && newNode(1) >= 0 && newNode(1) <= mapSize(1) && newNode(2) >= 0 && newNode(2) <= mapSize(2)
+            nearIndices = findNearNodes(nodes, newNode, radius);
+
+            minCost = nearestNode.cost + distance(nearestNode.pos, newNode);
+
+            for j = 1:length(nearIndices)
+                nearNode = nodes(nearIndices(j));
+                if ~isCollision(nearNode.pos, newNode, obstacles) && nearNode.cost + distance(nearNode.pos, newNode) < minCost
+                    minCost = nearNode.cost + distance(nearNode.pos, newNode);
+                    nearestNodeIndex = nearIndices(j);
+                end
+            end
+
+            nodes(end+1).pos = newNode;
+            nodes(end).cost = minCost;
+            nodes(end).parent = nearestNodeIndex;
+
+            for j = 1:length(nearIndices)
+                nearNode = nodes(nearIndices(j));
+                if ~isCollision(newNode, nearNode.pos, obstacles) && nodes(end).cost + distance(newNode, nearNode.pos) < nearNode.cost
+                    nodes(nearIndices(j)).parent = length(nodes);
+                end
+            end
+        end
+
+        if distance(nodes(end).pos, goal) <= stepSize && ~isCollision(nodes(end).pos, goal, obstacles)
+            nodes(end+1).pos = goal;
+            nodes(end).cost = nodes(end-1).cost + distance(nodes(end-1).pos, goal);
+            nodes(end).parent = length(nodes) - 1;
+            break;
+        end
+    end
+
+    path = [];
+    if distance(nodes(end).pos, goal) <= stepSize && ~isCollision(nodes(end).pos, goal, obstacles)
+        currentNodeIndex = length(nodes);
+        while currentNodeIndex ~= 1
+            path = [nodes(currentNodeIndex).pos; path];
+            currentNodeIndex = nodes(currentNodeIndex).parent;
+        end
+        path = [start; path; goal];
+    end
+end
+
+function [nearestNodeIndex, nearestNode] = findNearestNode(nodes, sample)
+    nearestNodeIndex = 1;
+    nearestNode = nodes(1);
+    minDistance = distance(sample, nodes(1).pos);
+    for i = 2:length(nodes)
+        d = distance(sample, nodes(i).pos);
+        if d < minDistance
+            minDistance = d;
+            nearestNodeIndex = i;
+            nearestNode = nodes(i);
+        end
+    end
+end
+
+function [nearIndices] = findNearNodes(nodes, pos, radius)
+    nearIndices = [];
+    for i = 1:length(nodes)
+        if distance(pos, nodes(i).pos) <= radius
+            nearIndices = [nearIndices, i];
+        end
+    end
+end
+
+function [steeredNode] = steer(fromNode, toNode,stepSize)
+    direction = (toNode - fromNode) / norm(toNode - fromNode);
+    steeredNode = fromNode + stepSize * direction;
+end
+
+function [d] = distance(p1, p2)
+    d = norm(p1 - p2);
+end
+
+function [collision] = isCollision(p1, p2, obstacles)
+    collision = false;
+    for i = 1:size(obstacles, 1)
+        if checkLineIntersection(p1, p2, obstacles(i, 1:2), obstacles(i, 3:4))
+            collision = true;
+            break;
+        end
+    end
+end
+
+function [intersect] = checkLineIntersection(p1, p2, p3, p4)
+    intersect = false;
+    u_a = ((p4(1)-p3(1))*(p1(2)-p3(2)) - (p4(2)-p3(2))*(p1(1)-p3(1))) / ((p4(2)-p3(2))*(p2(1)-p1(1)) - (p4(1)-p3(1))*(p2(2)-p1(2)));
+    u_b = ((p2(1)-p1(1))*(p1(2)-p3(2)) - (p2(2)-p1(2))*(p1(1)-p3(1))) / ((p4(2)-p3(2))*(p2(1)-p1(1)) - (p4(1)-p3(1))*(p2(2)-p1(2)));
+
+    if u_a >= 0 && u_a <= 1 && u_b >= 0 && u_b <= 1
+        intersect = true;
+    end
+end
+
